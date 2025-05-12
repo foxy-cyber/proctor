@@ -49,3 +49,23 @@ pip install -r requirements.txt
 
 ---
 
+## 5. Run the Application
+
+### Terminal 1 – Start the Django Server
+
+Navigate to the root project directory (where `manage.py` is located) and run:
+
+```bash
+python manage.py runserver
+```
+
+### Terminal 2 – Run the Proctoring Worker
+
+Navigate to the CV processing directory and run:
+
+```bash
+cd exam_app/cv/Code
+python proctoring_worker.py
+```
+
+---
