@@ -1,0 +1,101 @@
+<!-- exam_app/templates/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam Streaming</title>
+</head>
+<body>
+    <h1>Webcam Streaming</h1>
+    <video id="videoElement" width="640" height="480" autoplay></video>
+    <button id="captureButton">Start</button>
+    <button id="stopButton">Stop</button>
+    <ul id="videoList"></ul>
+    <script>
+        const video = document.getElementById('videoElement');
+        const captureButton = document.getElementById('captureButton');
+        const stopButton = document.getElementById('stopButton');
+        const videoList = document.getElementById('videoList');
+        let videoStream;
+        let intervalId;
+
+        captureButton.addEventListener('click', startCapture);
+        stopButton.addEventListener('click', stopCapture);
+
+        function startCapture() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    videoStream = stream;
+                    intervalId = setInterval(sendFrame, 200); // Send frame every second
+                })
+                .catch(err => {
+                    console.error('Error accessing webcam:', err);
+                });
+        }
+
+        function stopCapture() {
+            clearInterval(intervalId);
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function sendFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frame = canvas.toDataURL('image/png');
+        
+            // Convert base64 data to blob
+            const blob = dataURLtoBlob(frame);
+        
+            // Create FormData object and append the blob data
+            const formData = new FormData();
+            formData.append('frame', blob, 'frame.png');
+        
+            // Send frame to backend using AJAX
+            const csrftoken = '{{ csrf_token }}';
+            fetch('/video_stream/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                },
+                body: formData,  // Sending frame as form data
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to send video frame to backend');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Add received video text to the list
+                const listItem = document.createElement('li');
+                listItem.textContent = data.message;
+                videoList.appendChild(listItem);
+            })
+            .catch(err => {
+                console.error('Error sending video frame to backend:', err);
+            });
+        }
+        
+        // Function to convert data URL to Blob
+        function dataURLtoBlob(dataURL) {
+            const arr = dataURL.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+    </script>
+</body>
+</html>

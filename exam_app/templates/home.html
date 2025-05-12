@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+</head>
+<body>
+    {% if error %}
+        <p>{{ error }}</p>
+    {% endif %}
+    <h1>Home Page</h1>
+    <form method="post" action="{% url 'webcam' %}">
+        {% csrf_token %}
+        <label for="usn">Enter USN:</label>
+        <input type="text" id="usn" name="usn" required>
+        <button type="submit">Enter Webcam</button>
+    </form>
+</body>
+</html>

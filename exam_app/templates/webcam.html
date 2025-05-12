@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam Streaming</title>
+</head>
+<body>
+    <h1>Webcam Streaming</h1>
+    <p>USN: <span id="usn">{{ usn }}</span></p>
+
+    <video id="videoElement" width="640" height="480" autoplay></video>
+    <button id="captureButton">Start</button>
+    <button id="stopButton">Stop</button>
+    <ul id="videoList"></ul>
+
+    <script>
+        const video = document.getElementById('videoElement');
+        const captureButton = document.getElementById('captureButton');
+        const stopButton = document.getElementById('stopButton');
+        const videoList = document.getElementById('videoList');
+        const usn = document.getElementById("usn").innerText.trim();  // Get USN from HTML
+        let videoStream;
+        let intervalId;
+        let eventSource;  // To handle real-time warnings
+
+        captureButton.addEventListener('click', () => {
+            startCapture();
+            //startWarningListener(); // Start listening for warnings
+        });
+
+        stopButton.addEventListener('click', stopCapture);
+
+        function startCapture() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    videoStream = stream;
+                    intervalId = setInterval(sendFrame, 5000);
+                })
+                .catch(err => {
+                    console.error('Error accessing webcam:', err);
+                });
+        
+            startWarningListener(); // Start receiving warnings
+        }
+        
+        function stopCapture() {
+            clearInterval(intervalId);
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+            if (eventSource) {
+                eventSource.close(); // Stop listening to warnings
+            }
+            alert("Webcam Stopped.");
+        }
+
+        function sendFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frame = canvas.toDataURL('image/png');
+            const blob = dataURLtoBlob(frame);
+
+            const formData = new FormData();
+            formData.append('usn', usn);
+            formData.append('frame', blob, 'frame.png');
+
+            fetch('/video_stream/', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                const listItem = document.createElement('li');
+                listItem.textContent = data.message;
+                videoList.appendChild(listItem);
+            })
+            .catch(err => {
+                console.error('Error sending video frame to backend:', err);
+            });
+        }
+
+        function dataURLtoBlob(dataURL) {
+            const arr = dataURL.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
+        function startWarningListener() {
+            const eventSource = new EventSource(`/stream_warnings/${usn}/`);
+    
+            eventSource.onmessage = function (event) {
+                console.log("Received warning:", event.data);
+                const warningData = JSON.parse(event.data);
+                alert("⚠️ Warning: " + warningData.message);
+                if (warningData.stop_capture) {
+                    stopCapture();
+                    eventSource.close(); // Stop listening if cheating detected
+                }
+            };
+    
+            eventSource.onerror = function (event) {
+                console.error("SSE error:", event);
+                eventSource.close();
+            };
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <h2>List of Student USNs:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>USN</th>
+                <th>Action</th>
+                <th>Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+                <tr>
+                    <td>{{ student.usn }}</td>
+                    <td>
+                        <button onclick="runCV('{{ student.usn }}')">Run CV</button>
+                    </td>
+                    <td id="score_{{ student.usn }}"></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function runCV(usn) {
+            fetch(`/run_cv/?usn=${usn}`)
+                .then(response => response.json())
+                .then(data => {
+                    const scoreCell = document.getElementById(`score_${usn}`);
+                    scoreCell.textContent = data.score; // Assuming the response contains a 'score' field
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+    </script>
+</body>
+</html>
