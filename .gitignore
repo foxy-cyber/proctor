@@ -1,2 +1,3 @@
 exam_app/cv/Code/models/*
-exam_app/__pycache__/*
+
+exam_app/__pycache__/
