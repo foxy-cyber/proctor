@@ -1,17 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webcam Streaming</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    <div class="container">
     <h1>Webcam Streaming</h1>
     <p>USN: <span id="usn">{{ usn }}</span></p>
 
     <video id="videoElement" width="640" height="480" autoplay></video>
+
+    <div class="button-group">
     <button id="captureButton">Start</button>
     <button id="stopButton">Stop</button>
+    </div>
+
     <ul id="videoList"></ul>
 
     <script>
@@ -115,5 +122,6 @@
             };
         }
     </script>
+</div>
 </body>
 </html>

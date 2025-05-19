@@ -3,11 +3,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webcam Streaming</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    <div class="container">
     <h1>Webcam Streaming</h1>
     <video id="videoElement" width="640" height="480" autoplay></video>
     <button id="captureButton">Start</button>
@@ -97,5 +100,6 @@
             return new Blob([u8arr], { type: mime });
         }
     </script>
+</div>
 </body>
 </html>
