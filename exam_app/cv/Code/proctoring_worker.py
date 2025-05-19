@@ -20,6 +20,12 @@ from face_detection import get_face_detector, find_faces
 from object_detection import yoloV3Detect
 
 cheating_counter = {}
+consecutive_frame_counter = {}
+checks = ["Mouth Open", "Head Pose", "Eye Tracking"]
+convert_to_bool = {
+    "Looking away from screen": True,
+    "Looking at screen": False,
+}
 
 def process_image(usn, image_path):
     """Process image and analyze cheating"""
@@ -37,7 +43,7 @@ def process_image(usn, image_path):
     results = perform_proctoring_analysis(image_path,face_model,predictor,h_model)
     
     print("result isss:  ", results)
-    
+     
 #put your conditions here
     # cheating_detected = results.get("Banned Objects") or results.get("Spoof Face Detected") or results.get("Mouth Open")
     # if(results.get("Banned Objects")>0):
@@ -48,8 +54,50 @@ def process_image(usn, image_path):
         no_of_people=True
     cheating_detected = results.get("Mouth Open") or results.get("Banned Objects") or no_of_people
 
+    if usn not in consecutive_frame_counter:
+        user_face = {}
+        checks = ["Mouth Open", "Head Pose", "Eye Tracking"]
+        for check in checks:
+            if check not in user_face:
+                if results.get(check) == "N/A":
+                    user_face[check] = 0
+                else:
+                    result_check = results.get(check) if check == "Mouth Open" else convert_to_bool[results.get(check)]
+                    if result_check == False:
+                        user_face[check] = 0
+                    else:
+                        user_face[check] = 1
+        consecutive_frame_counter[usn] = user_face
+    else:
+        user_face = consecutive_frame_counter[usn]
+        for check in checks:
+            if results.get(check) == "N/A":
+                user_face[check] = 0
+            else:
+                result_check = results.get(check) if check == "Mouth Open" else convert_to_bool[results.get(check)]
+                if result_check == False:
+                    user_face[check] = 0
+                else:
+                    user_face[check] += 1
+        consecutive_frame_counter[usn] = user_face
+    user_face = consecutive_frame_counter[usn]
+    if user_face["Mouth Open"] >= 2:
+        send_warning_to_frontend(usn, stop=True,warning="Mouth Open")
+    if user_face["Head Pose"] >= 2:
+        send_warning_to_frontend(usn, stop=True,warning="Head Pose Looking Away from screen")
+    if user_face["Eye Tracking"] >= 2:
+        send_warning_to_frontend(usn, stop=True,warning="Eye Tracking Looking Away from screen")
+    
+    if user_face["Mouth Open"] == 1:
+        send_warning_to_frontend(usn, stop=False,warning="Mouth Open")
+    if user_face["Head Pose"] == 1:
+        send_warning_to_frontend(usn, stop=False,warning="Head Pose Looking Away from screen")
+    if user_face["Eye Tracking"] == 1:
+        send_warning_to_frontend(usn, stop=False,warning="Eye Tracking  Looking Away from screen")
+
     if usn not in cheating_counter:
         cheating_counter[usn] = 0
+
 
     if cheating_detected:
         print(image_path,"   ","cheated")
@@ -61,9 +109,9 @@ def process_image(usn, image_path):
     else:
         cheating_counter[usn] = 0  # Reset if no cheating detected
 
-def send_warning_to_frontend(usn, stop=False):
+def send_warning_to_frontend(usn, stop=False,warning="Cheating detected"):
     """Send warning to frontend"""
-    payload = {'usn': usn, 'warning': 'Cheating detected', 'stop_capture': stop}
+    payload = {'usn': usn, 'warning': warning, 'stop_capture': stop}
     requests.post("http://localhost:8000/send_warning/", json=payload)
 
 def callback(ch, method, properties, body):
